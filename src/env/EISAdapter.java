@@ -10,6 +10,9 @@ import jason.JasonException;
 import jason.NoValueException;
 import jason.asSyntax.*;
 import jason.environment.Environment;
+
+import jason.environment.grid.Location;
+
 import massim.eismassim.EnvironmentInterface;
 
 import java.util.*;
@@ -140,6 +143,13 @@ public class EISAdapter extends Environment implements AgentListener {
         }
 
         return false;
+    }
+
+    // movement implementation
+    public void move() {
+        List<Literal> percepts = getPercepts("agentA1");
+        Literal pos = percepts.get(11);
+        addPercept("agentA1", pos.getTerms());
     }
 
     /** Called before the end of MAS execution */

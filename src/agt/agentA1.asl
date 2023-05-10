@@ -1,7 +1,7 @@
 //Initial Beliefs
 
 //Initial Goals
-!start.
+!explore.
 
 //Initial Plans
-+!start: true <- .print("Hello World").
++!explore: true <- move; .print("I moved").
