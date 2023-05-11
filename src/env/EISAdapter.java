@@ -19,9 +19,9 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 /**
- * This class functions as a Jason environment, using EISMASSim to connect to a MASSim server.
+ * This class functions as a Jason environment, using EISMASSim to connect to a
+ * MASSim server.
  * (see http://cig.in.tu-clausthal.de/eis)
  * (see also https://multiagentcontest.org)
  *
@@ -52,15 +52,21 @@ public class EISAdapter extends Environment implements AgentListener {
         }
 
         ei.attachEnvironmentListener(new EnvironmentListener() {
-                public void handleNewEntity(String entity) {}
-                public void handleStateChange(EnvironmentState s) {
-                    logger.info("new state "+s);
-                }
-                public void handleDeletedEntity(String arg0, Collection<String> arg1) {}
-                public void handleFreeEntity(String arg0, Collection<String> arg1) {}
+            public void handleNewEntity(String entity) {
+            }
+
+            public void handleStateChange(EnvironmentState s) {
+                logger.info("new state " + s);
+            }
+
+            public void handleDeletedEntity(String arg0, Collection<String> arg1) {
+            }
+
+            public void handleFreeEntity(String arg0, Collection<String> arg1) {
+            }
         });
 
-        for(String e: ei.getEntities()) {
+        for (String e : ei.getEntities()) {
             System.out.println("Register agent " + e);
 
             try {
@@ -80,13 +86,14 @@ public class EISAdapter extends Environment implements AgentListener {
     }
 
     @Override
-    public void handlePercept(String agent, Percept percept) {}
+    public void handlePercept(String agent, Percept percept) {
+    }
 
     @Override
     public synchronized List<Literal> getPercepts(String agName) {
 
         Collection<Literal> ps = super.getPercepts(agName);
-        List<Literal> percepts = ps == null? new ArrayList<>() : new ArrayList<>(ps);
+        List<Literal> percepts = ps == null ? new ArrayList<>() : new ArrayList<>(ps);
 
         clearPercepts(agName);
 
@@ -94,13 +101,13 @@ public class EISAdapter extends Environment implements AgentListener {
             try {
                 var entities = ei.getAssociatedEntities(agName);
                 Map<String, PerceptUpdate> perMap = ei.getPercepts(agName, entities.toArray(String[]::new));
-                for (String entity: entities) {
+                for (String entity : entities) {
                     Structure strcEnt = ASSyntax.createStructure("entity", ASSyntax.createAtom(entity));
                     var agPercepts = previousPercepts.computeIfAbsent(agName, k -> new HashSet<>());
                     var update = perMap.get(entity);
                     update.getDeleteList().forEach(agPercepts::remove);
                     agPercepts.addAll(update.getAddList());
-                    for (Percept p: agPercepts) {
+                    for (Percept p : agPercepts) {
                         try {
                             percepts.add(perceptToLiteral(p).addAnnots(strcEnt));
                         } catch (JasonException e) {
@@ -117,7 +124,9 @@ public class EISAdapter extends Environment implements AgentListener {
     }
 
     /**
-     * TODO: Adapt this method if you want the percepts to arrive in Jason in some specific order.
+     * TODO: Adapt this method if you want the percepts to arrive in Jason in some
+     * specific order.
+     * 
      * @param percepts the current list of percepts
      * @return a list of the same percepts in some desired order
      */
@@ -145,19 +154,13 @@ public class EISAdapter extends Environment implements AgentListener {
         return false;
     }
 
-    // movement implementation
-    public void move() {
-        List<Literal> percepts = getPercepts("agentA1");
-        Literal pos = percepts.get(11);
-        addPercept("agentA1", pos.getTerms());
-    }
-
     /** Called before the end of MAS execution */
     @Override
     public void stop() {
         if (ei != null) {
             try {
-                if (ei.isKillSupported()) ei.kill();
+                if (ei.isKillSupported())
+                    ei.kill();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -167,35 +170,36 @@ public class EISAdapter extends Environment implements AgentListener {
 
     private static Literal perceptToLiteral(Percept per) throws JasonException {
         Literal l = ASSyntax.createLiteral(per.getName());
-        for (Parameter par: per.getParameters())
+        for (Parameter par : per.getParameters())
             l.addTerm(parameterToTerm(par));
         return l;
     }
 
     private static Term parameterToTerm(Parameter par) throws JasonException {
         if (par instanceof Numeral) {
-            return ASSyntax.createNumber(((Numeral)par).getValue().doubleValue());
+            return ASSyntax.createNumber(((Numeral) par).getValue().doubleValue());
         } else if (par instanceof Identifier) {
             try {
-                Identifier i = (Identifier)par;
+                Identifier i = (Identifier) par;
                 String a = i.getValue();
                 if (!Character.isUpperCase(a.charAt(0)))
                     return ASSyntax.parseTerm(a);
-            } catch (Exception ignored) {}
-            return ASSyntax.createString(((Identifier)par).getValue());
+            } catch (Exception ignored) {
+            }
+            return ASSyntax.createString(((Identifier) par).getValue());
         } else if (par instanceof ParameterList) {
             ListTerm list = new ListTermImpl();
             ListTerm tail = list;
-            for (Parameter p: (ParameterList)par)
-                tail = tail.append( parameterToTerm(p) );
+            for (Parameter p : (ParameterList) par)
+                tail = tail.append(parameterToTerm(p));
             return list;
         } else if (par instanceof Function f) {
             Structure l = ASSyntax.createStructure(f.getName());
-            for (Parameter p: f.getParameters())
+            for (Parameter p : f.getParameters())
                 l.addTerm(parameterToTerm(p));
             return l;
         }
-        throw new JasonException("The type of parameter "+par+" is unknown!");
+        throw new JasonException("The type of parameter " + par + " is unknown!");
     }
 
     private static Action literalToAction(Literal action) {
@@ -209,28 +213,29 @@ public class EISAdapter extends Environment implements AgentListener {
         if (t.isNumeric()) {
             try {
                 double d = ((NumberTerm) t).solve();
-                if((d == Math.floor(d)) && !Double.isInfinite(d)) return new Numeral((int)d);
+                if ((d == Math.floor(d)) && !Double.isInfinite(d))
+                    return new Numeral((int) d);
                 return new Numeral(d);
-            } catch(NoValueException e){
+            } catch (NoValueException e) {
                 e.printStackTrace();
             }
             return new Numeral(null);
         } else if (t.isList()) {
             List<Parameter> terms = new ArrayList<>();
-            for (Term listTerm: (ListTerm)t)
+            for (Term listTerm : (ListTerm) t)
                 terms.add(termToParameter(listTerm));
-            return new ParameterList( terms );
+            return new ParameterList(terms);
         } else if (t.isString()) {
-            return new Identifier( ((StringTerm)t).getString() );
+            return new Identifier(((StringTerm) t).getString());
         } else if (t.isLiteral()) {
-            Literal l = (Literal)t;
+            Literal l = (Literal) t;
             if (!l.hasTerm()) {
                 return new Identifier(l.getFunctor());
             } else {
                 Parameter[] terms = new Parameter[l.getArity()];
                 for (int i = 0; i < l.getArity(); i++)
                     terms[i] = termToParameter(l.getTerm(i));
-                return new Function( l.getFunctor(), terms );
+                return new Function(l.getFunctor(), terms);
             }
         }
         return new Identifier(t.toString());
