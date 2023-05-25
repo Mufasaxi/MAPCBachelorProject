@@ -1,44 +1,74 @@
-//Initial Beliefs
+!task.
 
-//Initial Goals
-!explore.
 
-//Initial Plans
-+!explore: not rolePos(_, _)
-    <- .random(["n", "s", "e", "w"], D);
++!task: true
+    <- !explore;
+    !go;
+    if (at_zone) {
+        adopt(worker);
+    } elif (roleZone(X, Y)) {
+        -+dest(X, Y);
+        !go;
+        adopt(worker);
+    } else {
+        while (not roleZone(_, _)) {
+            !explore;
+        }
+        ?roleZone(X, Y);
+        -+dest(X, Y);
+    }
+
+    if (dispenser(X, Y)) {
+        -+dest(X, Y);
+    } else {
+        while (not dispenser(X, Y)) {
+            !explore;
+        }
+        ?dispenser(X, Y);
+        -+dest(X, Y);
+    }
+    !go;
+    move(n);
+    request(s);
+    attach(s).
+
++!explore: true
+    <- .random([n, s, e, w], D);
     move(D);
-    !explore.
+    if (not dest(_, _)) {
+        !explore;
+    }.
 
-+thing(X, Y, Type, Details): Type == "dispenser"
-    <- ?position(A, B);
-    +dispenser(A+X, B+Y).
++thing(X, Y, dispenser, Det): true
+    <- +dispenser(X, Y).
 
-+goalZone(X, Y): position(A, B) & X>0 & Y>0 & X<19 & Y<19
-    <- +goal(A+X, B+Y).
++roleZone(X, Y): not dest(_, _)
+    <- +dest(X, Y).
 
-+roleZone(X, Y): position(A, B) & X>0 & Y>0 & X<19 & Y<19
-    <- +rolePos(A+X, B+Y).
 
-+rolePos(X, Y): not roleDest(_, _)
-    <- +roleDest(X, Y);
-    !change_role.
++!go: true
+    <- while (dest(X, Y) & X>0) {
+        move(e);
+        -+dest(X-1, Y);
+    }
 
-+!change_role: true
-    <- !go;
-    adopt("worker").
+    while (dest(X, Y) & X<0) {
+        move(w);
+        -+dest(X+1, Y);
+    }
 
-+!go: roleDest(X, Y) & position(A, B) & X>A
-    <- move("e");
-    !go.
+    while (dest(X, Y) & Y>0) {
+        move(s);
+        -+dest(X, Y-1);
+    }
 
-+!go: roleDest(X, Y) & position(A, B) & X<A
-    <- move("w");
-    !go.
+    while (dest(X, Y) & Y<0) {
+        move(n);
+        -+dest(X, Y+1);
+    }
 
-+!go: roleDest(X, Y) & position(A, B) & Y>B
-    <- move("s");
-    !go.
+    if (roleZone(0, 0)) {
+        +at_zone;
+    }.
 
-+!go: roleDest(X, Y) & position(A, B) & Y<B
-    <- move("n");
-    !go.
+
