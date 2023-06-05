@@ -2,7 +2,7 @@
   "scenario": "assemble2022",
   "host": "localhost",
   "port": 12300,
-  "scheduling": true,
+  "scheduling": false,
   "only-once": false,
   "timeout": 4000,
   "times": false,
