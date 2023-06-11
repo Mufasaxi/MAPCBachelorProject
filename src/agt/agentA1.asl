@@ -1,18 +1,21 @@
-//if no roleZone detected, explore to find one.
-+step(_): not roleZone(_,_) 
-    <- !explore.
+//setting destination to roleZone.
++step(_): roleZone(X,Y) & position(A,B) & not destination(_,_)
+    <- +destination(A+X, B+Y).
 
 //saving dispenser and goalZone coordinates along the way for later.
-+step(_): thing(X,Y,dispenser,Type) & position(A,B)
++step(_): thing(X,Y,dispenser,Type) & position(A,B) & not dispenser(_,_,_)
     <- +dispenser(A+X,B+Y,Type).
 
 +step(_): goalZone(X,Y) & position(A,B) & not goalDestination(_,_)
     <- +goalDestination(A+X, B+Y).
 
-//setting destination and deciding direction to move towards´.
-+step(_): roleZone(X,Y) & position(A,B) & not destination(_,_)
-    <- +destination(A+X, B+Y).
 
+//if no roleZone detected, explore to find one.
++step(_): not roleZone(_,_) & not destination(_,_)
+    <- !explore.
+
+
+//deciding which direction to move towards.
 +step(_): destination(X,Y) & position(A,B) & X<A
     <- !checkMoveW.
 
@@ -25,15 +28,56 @@
 +step(_): destination(X,Y) & position(A,B) & Y>B
     <- !checkMoveS.
 
-//roleZone reached; changing role.
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B
-    <- adopt(worker);
-    skip.
+
+//destination reached.
++step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(default)
+    <- +setNewDestination;
+    adopt(worker).
+
+
+//setting dispenser as the new destination.
++step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(A,B,ReqType)]) & Type == ReqType & setNewDestination
+    <- -+destination(X,Y);
+    -setNewDestination.
+
+
++step(_): role(worker) & not dispenser(_,_,_)
+    <- !explore.
+
+
+//adjusting to task requirements.
++step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
+    <- !requestBlock.
+
++step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
+    <- !requestBlock.
+
++step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
+    <- !requestBlock.
+
++step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
+    <- !requestBlock.
+
+
++step(_): requestingE
+    <- request(e).
+
++step(_): requestingW
+    <- request(w).
+
++step(_): requestingS
+    <- request(s).
+
++step(_): requestingN
+    <- request(n).
+
 
 //exploring.
 +!explore 
-    <- .random([n, s, e, w], D);
+    <- .print("exploring");
+    .random([n, s, e, w], D);
     move(D).
+
 
 //fixing destination coordinates if they are invalid.
 +destination(X,Y): X<0
@@ -48,33 +92,48 @@
 +destination(X,Y): Y>24
     <- -+destination(X, Y-25).
 
+
 //if move is obstructed, clear, otherwise move.
-+!checkMoveE: position(X,Y) & thing(1,0,obstacle,_)
++!checkMoveE: thing(1,0,obstacle,_)
     <- clear(1,0).
 
-+!checkMoveE: position(X,Y) & not thing(1,0,obstacle,_)
++!checkMoveE: not thing(1,0,obstacle,_)
     <- move(e).
 
-+!checkMoveS: position(X,Y) & thing(0,1,obstacle,_)
++!checkMoveS: thing(0,1,obstacle,_)
     <- clear(0,1).
 
-+!checkMoveS: position(X,Y) & not thing(0,1,obstacle,_)
++!checkMoveS: not thing(0,1,obstacle,_)
     <- move(s).
 
-+!checkMoveN: position(X,Y) & thing(0,-1,obstacle,_)
++!checkMoveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
 
-+!checkMoveN: position(X,Y) & not thing(0,-1,obstacle,_)
++!checkMoveN: not thing(0,-1,obstacle,_)
     <- move(n).
 
-+!checkMoveW: position(X,Y) & thing(-1,0,obstacle,_)
++!checkMoveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
 
-+!checkMoveW: position(X,Y) & not thing(-1,0,obstacle,_)
++!checkMoveW: not thing(-1,0,obstacle,_)
     <- move(w).
 
 
++!requestBlock: task(_,_,_,[req(1,0,_)])
+    <- +requestingE;
+    !checkMoveW.
 
++!requestBlock: task(_,_,_,[req(-1,0,_)])
+    <- +requestingW;
+    !checkMoveE.
+
++!requestBlock: task(_,_,_,[req(0,1,_)])
+    <- +requestingS;
+    !checkMoveN.
+
++!requestBlock: task(_,_,_,[req(0,-1,_)])
+    <- +requestingN;
+    !checkMoveS.
 
 // !task.
 /* +!task: true
