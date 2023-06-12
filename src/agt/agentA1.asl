@@ -380,21 +380,6 @@ fourthPoint(6,0).
 
 +!checkMoveW: not thing(-1,0,obstacle,_)
     <- move(w).
-<<<<<<< HEAD
-=======
-
-
-// +!requestBlock: task(_,_,_,[req(1,0,_)])
-//     <- +requestingE;
-//     !checkMoveW.
-
-// +!requestBlock: task(_,_,_,[req(-1,0,_)])
-//     <- +requestingW;
-//     !checkMoveE.
-
-// +!requestBlock: task(_,_,_,[req(0,1,_)])
-//     <- +requestingS;
-//     !checkMoveN.
 
 // +!requestBlock: task(_,_,_,[req(0,-1,_)])
 //     <- +requestingN;
