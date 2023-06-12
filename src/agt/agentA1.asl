@@ -1,21 +1,30 @@
-//setting destination to roleZone.
-+step(_): roleZone(X,Y) & position(A,B) & not destination(_,_)
-    <- +destination(A+X, B+Y).
+start.
 
-//saving dispenser and goalZone coordinates along the way for later.
+destination(5,5).
+firstPoint(5,19).
+secondPoint(19,19).
+thirdPoint(19,5).
+fourthPoint(6,5).
+
+arrived 
+    :- destination(X,Y) & position(A,B) & X==A & Y==B.
+
+
+//saving coord to roleZone, goalZone, and dispenser.
++step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
+    <- +roleDestination(A+X, B+Y);
+    skip.
+
 +step(_): thing(X,Y,dispenser,Type) & position(A,B) & not dispenser(_,_,_)
-    <- +dispenser(A+X,B+Y,Type).
+    <- +dispenser(A+X,B+Y,Type);
+    skip.
 
 +step(_): goalZone(X,Y) & position(A,B) & not goalDestination(_,_)
-    <- +goalDestination(A+X, B+Y).
+    <- +goalDestination(A+X, B+Y);
+    skip.
 
 
-//if no roleZone detected, explore to find one.
-+step(_): not roleZone(_,_) & not destination(_,_)
-    <- !explore.
-
-
-//deciding which direction to move towards.
+//movement.
 +step(_): destination(X,Y) & position(A,B) & X<A
     <- !checkMoveW.
 
@@ -29,54 +38,130 @@
     <- !checkMoveS.
 
 
-//destination reached.
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(default)
-    <- +setNewDestination;
+//scanning map.
++step(_): arrived & start & firstPoint(X,Y)
+    <- -start;
+    +goindfirst;
+    -+destination(X,Y);
+    skip.
+
++step(_): arrived & goindfirst & secondPoint(X,Y)
+    <- -goindfirst;
+    +goingsecond;
+    -+destination(X,Y);
+    skip.
+
++step(_): arrived & goingsecond & thirdPoint(X,Y)
+    <- -goingsecond;
+    +goingthird;
+    -+destination(X,Y);
+    skip.
+
++step(_): arrived & goingthird & fourthPoint(X,Y)
+    <- -goingthird;
+    +goingfourth;
+    -+destination(X,Y);
+    skip.
+
++step(_): arrived & goingfourth & roleDestination(X,Y)
+    <- -goingfourth;
+    +goingRoleZone;
+    -+destination(X,Y);
+    skip.
+
+
+//roleZone reached; changing roles.
++step(_): arrived & goingRoleZone
+    <- -goingRoleZone;
+    +setDispenserDestination;
     adopt(worker).
 
 
 //setting dispenser as the new destination.
-+step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(A,B,ReqType)]) & Type == ReqType & setNewDestination
++step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(1,0,ReqType)]) & Type == ReqType & setDispenserDestination
+    <- -+destination(X-1,Y);
+    -setDispenserDestination;
+    +requestingE;
+    skip.
+
++step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(-1,0,ReqType)]) & Type == ReqType & setDispenserDestination
+    <- -+destination(X+1,Y);
+    -setDispenserDestination;
+    +requestingW;
+    skip.
+
++step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(0,1,ReqType)]) & Type == ReqType & setDispenserDestination
+    <- -+destination(X,Y-1);
+    -setDispenserDestination;
+    +requestingS;
+    skip.
+
++step(_): role(worker) & dispenser(X,Y,Type) & task(_,_,_,[req(0,-1,ReqType)]) & Type == ReqType & setDispenserDestination
+    <- -+destination(X,Y+1);
+    -setDispenserDestination;
+    +requestingN;
+    skip.
+
+
+//requesting block from dispenser.
++step(_): arrived & requestingE
+    <- +attachingE;
+    +setGoalDestination;
+    -requestingE;
+    request(e).
+
++step(_): arrived & requestingW
+    <- +attachingW;
+    +setGoalDestination;
+    -requestingW;
+    request(w).
+
++step(_): arrived & requestingS
+    <- +attachingS;
+    +setGoalDestination;
+    -requestingS;
+    request(s).
+
++step(_): arrived & requestingN
+    <- +attachingN;
+    +setGoalDestination;
+    -requestingN;
+    request(n).
+
+
+//attaching block.
++step(_): attachingE
+    <- +submitting;
+    -attachingE;
+    attach(e).
+
++step(_): attachingW
+    <- +submitting;
+    -attachingW;
+    attach(w).
+
++step(_): attachingS
+    <- +submitting;
+    -attachingS;
+    attach(s).
+
++step(_): attachingN
+    <- +submitting;
+    -attachingN;
+    attach(n).
+
+
+//setting destination to goalZone.
++step(_): role(worker) & goalDestination(X,Y) & setGoalDestination
     <- -+destination(X,Y);
-    -setNewDestination.
+    -setGoalDestination;
+    skip.
 
+//submitting task.
++step(_): arrived & submitting & task(Task,_,_,_)
+    <- +setDispenserDestination;
+    submit(Task).
 
-+step(_): role(worker) & not dispenser(_,_,_)
-    <- !explore.
-
-
-//adjusting to task requirements.
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
-    <- !requestBlock.
-
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
-    <- !requestBlock.
-
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
-    <- !requestBlock.
-
-+step(_): destination(X,Y) & position(A,B) & X==A & Y==B & role(worker)
-    <- !requestBlock.
-
-
-+step(_): requestingE
-    <- request(e).
-
-+step(_): requestingW
-    <- request(w).
-
-+step(_): requestingS
-    <- request(s).
-
-+step(_): requestingN
-    <- request(n).
-
-
-//exploring.
-+!explore 
-    <- .print("exploring");
-    .random([n, s, e, w], D);
-    move(D).
 
 
 //fixing destination coordinates if they are invalid.
@@ -117,130 +202,3 @@
 
 +!checkMoveW: not thing(-1,0,obstacle,_)
     <- move(w).
-
-
-+!requestBlock: task(_,_,_,[req(1,0,_)])
-    <- +requestingE;
-    !checkMoveW.
-
-+!requestBlock: task(_,_,_,[req(-1,0,_)])
-    <- +requestingW;
-    !checkMoveE.
-
-+!requestBlock: task(_,_,_,[req(0,1,_)])
-    <- +requestingS;
-    !checkMoveN.
-
-+!requestBlock: task(_,_,_,[req(0,-1,_)])
-    <- +requestingN;
-    !checkMoveS.
-
-// !task.
-/* +!task: true
-    <- !explore;
-    !go;
-    if (at_zone) {
-        adopt(worker);
-    } elif (roleZone(X, Y)) {
-        -+destination(X, Y);
-        !go;
-    } else {
-        while (not roleZone(X, Y)) {
-            !explore;
-        }
-        ?roleZone(X, Y);
-        -+destination(X, Y);
-        !go;
-    }
-    if (dispenser(X, Y)) {
-        -+destination(X, Y);
-    } else {
-        while (not dispenser(X, Y)) {
-            !explore;
-        }
-        ?dispenser(X, Y);
-        -+destination(X, Y);
-    }
-    !go;
-    move(n);
-    request(s);
-    attach(s);
-    if (goal(X, Y)) {
-        .print("goal");
-        -+destination(X, Y);
-    } else {
-        while (not goal(X, Y)) {
-            .print("no goal");
-            !explore;
-        }
-        ?dispenser(X, Y);
-        -+destination(X, Y);
-    }
-    !go_;
-    submit(task0).
-
-+!explore: true
-    <- .random([n, s, e, w], D);
-    move(D);
-    if (not destination(_, _)) {
-        .print("no destination. explore");
-        !explore;
-    }.
-
-+thing(X, Y, dispenser, _): true
-    <- +dispenser(X, Y).
-
-+roleZone(X, Y): not destination(_, _) & X>0
-    <- +destination(X, Y).
-
-+goalZone(X, Y): position(A, B) & not goal(_, _)
-    <- +goal(X+A, Y+B).
-
-+!go: true
-    <- .print("go");
-    while (destination(X, Y) & X>0) {
-        move(e);
-        -+destination(X-1, Y);
-    }
-
-    while (destination(X, Y) & X<0) {
-        move(w);
-        -+destination(X+1, Y);
-    }
-
-    while (destination(X, Y) & Y>0) {
-        move(s);
-        -+destination(X, Y-1);
-    }
-
-    while (destination(X, Y) & Y<0) {
-        move(n);
-        -+destination(X, Y+1);
-    }
-
-    if (roleZone(X, Y) & X==0 & Y==0) {
-        .print("arrived");
-        +at_zone;
-    }.
-
-
-
-
-+!go_: true
-    <- .print("gog");
-    while (destination(X, Y) & position(A, B) & X<A) {
-        move(w);
-    }
-
-    while (destination(X, Y) & position(A, B) & X>A) {
-        move(e);
-    }
-
-    while (destination(X, Y) & position(A, B) & Y<A) {
-        move(n);
-    }
-
-    while (destination(X, Y) & position(A, B) & Y>A) {
-        move(s);
-    }. */
-
