@@ -3,6 +3,7 @@ MAS mars {
     environment: env.EISAdapter
 
     agents: agentA1;
+            agentA2;
 
     aslSourcePath: "src/agt";
 }
