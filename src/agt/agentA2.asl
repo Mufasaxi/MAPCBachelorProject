@@ -1,5 +1,6 @@
 start.
 locationsFound.
+tellDispenser.
 
 destination(19,19).
 firstPoint(19,5).
@@ -11,21 +12,26 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 //saving coord to roleZone, goalZone, and dispenser.
 +step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
     <- +roleDestination(A+X, B+Y);
-    .send("AgentA1", tell, roleDestination(A+X, B+Y));
+    .send("agentA1", tell, roleDestination(A+X, B+Y));
     skip.
 
 +step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
     <- +dispenser(A+X,B+Y,Type);
     skip.
 
++step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & position(A,B) & Type==RequestedType & tellDispenser
+    <- .send("agentA1", tell, dispenser(A+X,B+Y,Type));
+    -tellDispenser;
+    skip.
+
 +step(_): goalZone(X,Y) & position(A,B) & not goalDestination(_,_)
     <- +goalDestination(A+X, B+Y);
-    .send("AgentA1", tell, goalDestination(A+X, B+Y));
+    .send("agentA1", tell, goalDestination(A+X, B+Y));
     skip.
 
 
 //if all locations found, end explore.
-+step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,_) & locationsFound
++step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & Type==RequestedType & locationsFound
     <- +endExplore;
     -locationsFound;
     +goingRoleZone;
@@ -79,55 +85,115 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 
 //setting dispenser as the new destination.
 +step(_): role(worker) & dispenser(X,Y,_) & setDispenserDestination
-    <- -+destination(X-1,Y);
-    -setDispenserDestination;
-    +requesting;
-    skip.
-
-+step(_): role(worker) & dispenser(X,Y,_) & task(_,_,_,[_,req(-1,1,_)]) & setDispenserDestination
-    <- -+destination(X+1,Y);
-    -setDispenserDestination;
-    +requestingW;
-    skip.
-
-+step(_): role(worker) & dispenser(X,Y,_) & task(_,_,_,[_,req(0,2,_)]) & setDispenserDestination
     <- -+destination(X,Y-1);
     -setDispenserDestination;
-    +requestingS;
-    skip.
-
-+step(_): role(worker) & dispenser(X,Y,_) & task(_,_,_,[_,req(0,-1,_)]) & setDispenserDestination
-    <- -+destination(X,Y+1);
-    -setDispenserDestination;
-    +requestingN;
+    +requesting;
     skip.
 
 
 //requesting block from dispenser.
 +step(_): arrived & requesting
     <- +attaching;
-    +setGoalDestination;
     -requesting;
     request(s).
 
 
 //attaching block.
 +step(_): attaching
-    <- +submitting;
+    <- +setGoalDestination;
     -attaching;
     attach(s).
 
 
+/* //meeting to connect blocks.
++step(_): position(X,Y) & meeting & task(_,_,_,[_,req(A,B,_)]) & A==0 & B==1
+    <- .send("agentA1", tell, position(X-1,Y));
+    -meeting;
+    +goingGoal;
+    +connecting;
+    -+destination(X-1,Y);
+    skip.
+
++step(_): position(X,Y) & meeting & task(_,_,_,[_,req(A,B,_)]) & not (A==0 & B==1) & waiting
+    <- -waiting;
+    -+destination(X-1,Y);
+    skip.
+
++position(X,Y)[source(agentA1)]: meeting & task(_,_,_,[_,req(1,1,_)])
+    <- +connecting;
+    -meeting;
+    -+destination(X+1,Y);
+    skip.
+    
++position(X,Y)[source(agentA1)]: meeting & task(_,_,_,[_,req(-1,1,_)])
+    <- +connecting;
+    -meeting;
+    -+destination(X-1,Y);
+    skip.
+    
++position(X,Y)[source(agentA1)]: meeting & task(_,_,_,[_,req(0,2,_)])
+    <- +rotating;
+    -meeting;
+    -+destination(X+1,Y+2);
+    skip.
+
+
+//connecting blocks.
++step(_): arrived & rotating
+    <- +connecting;
+    -rotating;
+    rotate(cw).
+
++step(_): arrived & connecting
+    <- connect("agentA1", 0, 1).
+
++step(_): goingGoal
+    <- +setGoalDestination;
+    skip.
+
++step(_): not goingGoal
+    <- +detaching;
+    skip.
+
++step(_): detaching
+    <- -detaching;
+    +setDispenserDestination;
+    detach(s). */
+
+
 //setting destination to goalZone.
-+step(_): role(worker) & goalDestination(X,Y) & setGoalDestination
++step(_): goalDestination(X,Y) & setGoalDestination & not waiting
     <- -+destination(X,Y);
+    +firstToGoal;
     -setGoalDestination;
     skip.
 
++step(_): position(X,Y)[source("agentA1")] & waiting & task(_,_,_,[_,req(0,1,_)])
+    <- -+destination(X,Y-3);
+    -waiting;
+    skip.
+
++step(_): position(X,Y)[source("agentA1")] & waiting & task(_,_,_,[_,req(1,1,_)])
+    <- -+destination(X+1,Y);
+    -waiting;
+    skip.
+
++step(_): position(X,Y)[source("agentA1")] & waiting & task(_,_,_,[_,req(-1,1,_)])
+    <- -+destination(X-1,Y);
+    -waiting;
+    skip.
+
++step(_): position(X,Y)[source("agentA1")] & waiting & task(_,_,_,[_,req(0,2,_)])
+    <- -+destination(X+1,Y+2);
+    -waiting;
+    skip.
+
+
 //submitting task.
-+step(_): arrived & submitting & task(Task,_,_,_)
-    <- +setDispenserDestination;
-    submit(Task).
++step(_): arrived & firstToGoal & task(Task,_,_,_) & position(X,Y)
+    <- .send("agentA1", tell, waiting);
+    .send("agentA1", tell, position(X,Y));
+    skip.
 
 
 //fixing destination coordinates if they are invalid.
