@@ -39,6 +39,28 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     skip.
 
 
+//changing destination to goalZone to arrange blocks.
++step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(0,1,_),_])
+    <- -+destination(X,Y-3);
+    -waiting[source(agentA2)];
+    skip.
+
++step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(1,1,_),_])
+    <- -+destination(X+1,Y);
+    -waiting[source(agentA2)];
+    skip.
+
++step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(-1,1,_),_])
+    <- -+destination(X-1,Y);
+    -waiting[source(agentA2)];
+    skip.
+
++step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(0,2,_),_])
+    <- -+destination(X+1,Y+2);
+    -waiting[source(agentA2)];
+    skip.
+
+
 //movement.
 +step(_): destination(X,Y) & position(A,B) & X<A
     <- !checkMoveW.
@@ -154,31 +176,12 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     -setGoalDestination;
     skip.
 
-+step(_): position(X,Y)[source("agentA2")] & waiting & task(_,_,_,[req(0,1,_),_])
-    <- -+destination(X,Y-3);
-    -waiting;
-    skip.
-
-+step(_): position(X,Y)[source("agentA2")] & waiting & task(_,_,_,[req(1,1,_),_])
-    <- -+destination(X+1,Y);
-    -waiting;
-    skip.
-
-+step(_): position(X,Y)[source("agentA2")] & waiting & task(_,_,_,[req(-1,1,_),_])
-    <- -+destination(X-1,Y);
-    -waiting;
-    skip.
-
-+step(_): position(X,Y)[source("agentA2")] & waiting & task(_,_,_,[req(0,2,_),_])
-    <- -+destination(X+1,Y+2);
-    -waiting;
-    skip.
-
 
 //submitting task.
 +step(_): arrived & firstToGoal & task(Task,_,_,_) & position(X,Y)
     <- .send("agentA2", tell, waiting);
-    .send("agentA2", tell, position(X,Y));
+    .send("agentA2", tell, pos(X,Y));
+    -firstToGoal;
     skip.
 
 
