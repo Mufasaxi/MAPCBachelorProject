@@ -39,28 +39,6 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     skip.
 
 
-//changing destination to goalZone to arrange blocks.
-+step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(0,1,_),_])
-    <- -+destination(X,Y-3);
-    -waiting[source(agentA2)];
-    skip.
-
-+step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(1,1,_),_])
-    <- -+destination(X+1,Y);
-    -waiting[source(agentA2)];
-    skip.
-
-+step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(-1,1,_),_])
-    <- -+destination(X-1,Y);
-    -waiting[source(agentA2)];
-    skip.
-
-+step(_): pos(X,Y)[source(agentA2)] & waiting & task(_,_,_,[req(0,2,_),_])
-    <- -+destination(X+1,Y+2);
-    -waiting[source(agentA2)];
-    skip.
-
-
 //movement.
 +step(_): destination(X,Y) & position(A,B) & X<A
     <- !checkMoveW.
@@ -126,6 +104,12 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     -attaching;
     attach(s).
 
+//waiting for other agent to arrive.
++!wait: not waiting
+    <- -setGoalDestination;
+    !wait;
+    skip.
+
 
 /* //meeting to connect blocks.
 +step(_): position(X,Y) & meeting & task(_,_,_,[req(A,B,_),_]) & A==0 & B==1
@@ -170,21 +154,42 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 
 
 //setting destination to goalZone.
-+step(_): goalDestination(X,Y) & setGoalDestination & not waiting
++step(_): goalDestination(X,Y) & setGoalDestination
     <- -+destination(X,Y);
+    .send("agentA2", achieve, wait);
     +firstToGoal;
     -setGoalDestination;
     skip.
 
 
 //submitting task.
-+step(_): arrived & firstToGoal & task(Task,_,_,_) & position(X,Y)
++step(_): arrived & firstToGoal & position(X,Y)
     <- .send("agentA2", tell, waiting);
     .send("agentA2", tell, pos(X,Y));
     -firstToGoal;
     skip.
 
 
+//changing destination to goalZone to arrange blocks.
++step(_): pos(X,Y) & waiting & task(_,_,_,[req(0,1,_),_])
+    <- -+destination(X,Y-3);
+    -waiting;
+    skip.
+
++step(_): pos(X,Y) & waiting & task(_,_,_,[req(1,1,_),_])
+    <- -+destination(X+1,Y);
+    -waiting;
+    skip.
+
++step(_): pos(X,Y) & waiting & task(_,_,_,[req(-1,1,_),_])
+    <- -+destination(X-1,Y);
+    -waiting;
+    skip.
+
++step(_): pos(X,Y) & waiting & task(_,_,_,[req(0,2,_),_])
+    <- -+destination(X+1,Y+2);
+    -waiting;
+    skip.
 
 
 //fixing destination coordinates if they are invalid.
@@ -201,9 +206,12 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     <- -+destination(X, Y-25).
 
 
-//if move is obstructed, clear, otherwise move.
+//clearing/avoiding obstacles.
 +!checkMoveE: thing(1,0,obstacle,_)
     <- clear(1,0).
+
++!checkMoveE: attached(X,Y) & thing(X+1,Y,obstacle,_)
+    <- rotate(cw).
 
 +!checkMoveE: not thing(1,0,obstacle,_)
     <- move(e).
@@ -211,11 +219,17 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 +!checkMoveS: thing(0,1,obstacle,_)
     <- clear(0,1).
 
++!checkMoveS: attached(X,Y) & thing(X,Y+1,obstacle,_)
+    <- rotate(cw).
+
 +!checkMoveS: not thing(0,1,obstacle,_)
     <- move(s).
 
 +!checkMoveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
+
++!checkMoveN: attached(X,Y) & thing(X,Y-1,obstacle,_)
+    <- rotate(cw).
 
 +!checkMoveN: not thing(0,-1,obstacle,_)
     <- move(n).
@@ -223,6 +237,34 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 +!checkMoveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
 
++!checkMoveW: attached(X,Y) & thing(X-1,Y,obstacle,_)
+    <-rotate(ccw).
+
 +!checkMoveW: not thing(-1,0,obstacle,_)
     <- move(w).
 
+
+//fail plans for rotation.
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(0,1)
+    <- clear(w).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(0,1)
+    <- clear(e).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(0,-1)
+    <- clear(e).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(0,-1)
+    <- clear(w).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(1,0)
+    <- clear(s).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(1,0)
+    <- clear(n).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(-1,0)
+    <- clear(n).
+
++step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(-1,0)
+    <- clear(s).
