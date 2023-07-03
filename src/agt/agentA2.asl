@@ -7,6 +7,10 @@ firstPoint(19,5).
 secondPoint(6,5).
 
 arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
+moving(w) :- destination(X,Y) & position(A,B) & X<A.
+moving(e) :- destination(X,Y) & position(A,B) & X>A.
+moving(s) :- destination(X,Y) & position(A,B) & Y>B.
+moving(n) :- destination(X,Y) & position(A,B) & Y<B.
 
 
 //saving coord to roleZone, goalZone, and dispenser.
@@ -39,18 +43,31 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     skip.
 
 
+//removing belief of other agents' blocks
++attached(X,Y): not (X=0 | Y=0)
+    <- -attached(X,Y).
+
+
 //movement.
-+step(_): destination(X,Y) & position(A,B) & X<A
-    <- !checkMoveW.
++step(_): attached(_,_) & not attached(1,0) & moving(w)
+    <- !rotate.
++step(_): moving(w)
+    <- !moveW.
 
-+step(_): destination(X,Y) & position(A,B) & X>A
-    <- !checkMoveE.
++step(_): attached(_,_) & not attached(-1,0) & moving(e)
+    <- !rotate.
++step(_): moving(e)
+    <- !moveE.
 
-+step(_): destination(X,Y) & position(A,B) & Y<B
-    <- !checkMoveN.
++step(_): attached(_,_) & not attached(0,1) & moving(n)
+    <- !rotate.
++step(_): moving(n)
+    <- !moveN.
 
-+step(_): destination(X,Y) & position(A,B) & Y>B
-    <- !checkMoveS.
++step(_): attached(_,_) & not attached(0,-1) & moving(s)
+    <- !rotate.
++step(_): moving(s)
+    <- !moveS.
 
 
 //scanning map.
@@ -219,65 +236,54 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     <- -+destination(X, Y-25).
 
 
-//clearing/avoiding obstacles.
-+!checkMoveE: thing(1,0,obstacle,_)
-    <- clear(1,0).
-
-+!checkMoveE: attached(X,Y) & thing(X+1,Y,obstacle,_)
-    <- rotate(cw).
-
-+!checkMoveE: not thing(1,0,obstacle,_)
-    <- move(e).
-
-+!checkMoveS: thing(0,1,obstacle,_)
-    <- clear(0,1).
-
-+!checkMoveS: attached(X,Y) & thing(X,Y+1,obstacle,_)
-    <- rotate(cw).
-
-+!checkMoveS: not thing(0,1,obstacle,_)
-    <- move(s).
-
-+!checkMoveN: thing(0,-1,obstacle,_)
-    <- clear(0,-1).
-
-+!checkMoveN: attached(X,Y) & thing(X,Y-1,obstacle,_)
-    <- rotate(cw).
-
-+!checkMoveN: not thing(0,-1,obstacle,_)
-    <- move(n).
-
-+!checkMoveW: thing(-1,0,obstacle,_)
+//making room for rotation.
++!rotate: attached(0,1) & thing(-1,0,obstacle,_)
     <- clear(-1,0).
 
-+!checkMoveW: attached(X,Y) & thing(X-1,Y,obstacle,_)
-    <-rotate(ccw).
++!rotate: attached(0,1) & not thing(-1,0,obstacle,_)
+    <- rotate(cw).
 
-+!checkMoveW: not thing(-1,0,obstacle,_)
++!rotate: attached(0,-1) & thing(1,0,obstacle,_)
+    <- clear(1,0).
+
++!rotate: attached(0,-1) & not thing(1,0,obstacle,_)
+    <- rotate(cw).
+
++!rotate: attached(1,0) & thing(0,1,obstacle,_)
+    <- clear(0,1).
+
++!rotate: attached(1,0) & not thing(0,1,obstacle,_)
+    <- rotate(cw).
+
++!rotate: attached(-1,0) & thing(0,-1,obstacle,_)
+    <- clear(0,-1).
+
++!rotate: attached(-1,0) & not thing(0,-1,obstacle,_)
+    <- rotate(cw).
+
+
+//clearing obstacles/moving.
++!moveE: thing(1,0,obstacle,_)
+    <- clear(1,0).
+
++!moveE: not thing(1,0,obstacle,_)
+    <- move(e).
+
++!moveS: thing(0,1,obstacle,_)
+    <- clear(0,1).
+
++!moveS: not thing(0,1,obstacle,_)
+    <- move(s).
+
++!moveN: thing(0,-1,obstacle,_)
+    <- clear(0,-1).
+
++!moveN: not thing(0,-1,obstacle,_)
+    <- move(n).
+
++!moveW: thing(-1,0,obstacle,_)
+    <- clear(-1,0).
+
++!moveW: not thing(-1,0,obstacle,_)
     <- move(w).
 
-
-//fail plans for rotation.
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(0,1)
-    <- clear(w).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(0,1)
-    <- clear(e).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(0,-1)
-    <- clear(e).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(0,-1)
-    <- clear(w).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(1,0)
-    <- clear(s).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(1,0)
-    <- clear(n).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([cw]) & attached(-1,0)
-    <- clear(n).
-
-+step(_): lastAction(rotate) & lastActionResult(failed) & lastActionParam([ccw]) & attached(-1,0)
-    <- clear(s).
