@@ -11,6 +11,7 @@ moving(w) :- destination(X,Y) & position(A,B) & X<A.
 moving(e) :- destination(X,Y) & position(A,B) & X>A.
 moving(s) :- destination(X,Y) & position(A,B) & Y>B.
 moving(n) :- destination(X,Y) & position(A,B) & Y<B.
+myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 
 
 //saving coord to roleZone, goalZone, and dispenser.
@@ -43,29 +44,28 @@ moving(n) :- destination(X,Y) & position(A,B) & Y<B.
     skip.
 
 
-//removing belief of other agents' blocks
-+attached(X,Y): not (X=0 | Y=0)
-    <- -attached(X,Y).
-
-
 //movement.
-+step(_): attached(_,_) & not attached(1,0) & moving(w)
-    <- !rotate.
++step(_): myBlock(_,_) & not attached(1,0) & moving(w)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
 +step(_): moving(w)
     <- !moveW.
 
-+step(_): attached(_,_) & not attached(-1,0) & moving(e)
-    <- !rotate.
++step(_): myBlock(_,_) & not attached(-1,0) & moving(e)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
 +step(_): moving(e)
     <- !moveE.
 
-+step(_): attached(_,_) & not attached(0,1) & moving(n)
-    <- !rotate.
++step(_): myBlock(_,_) & not attached(0,1) & moving(n)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
 +step(_): moving(n)
     <- !moveN.
 
-+step(_): attached(_,_) & not attached(0,-1) & moving(s)
-    <- !rotate.
++step(_): myBlock(_,_) & not attached(0,-1) & moving(s)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
 +step(_): moving(s)
     <- !moveS.
 
@@ -121,11 +121,11 @@ moving(n) :- destination(X,Y) & position(A,B) & Y<B.
     -attaching;
     attach(s).
 
-//waiting for other agent to arrive.
+/* //waiting for other agent to arrive.
 +!wait: not waiting
     <- -setGoalDestination;
     !wait;
-    skip.
+    skip. */
 
 /* //meeting to connect blocks.
 +step(_): position(X,Y) & meeting & task(_,_,_,[_,req(A,B,_)]) & A==0 & B==1
@@ -185,14 +185,31 @@ moving(n) :- destination(X,Y) & position(A,B) & Y<B.
 
 //setting destination to goalZone.
 +step(_): goalDestination(X,Y) & setGoalDestination
-    <- -+destination(X,Y);
-    .send("agentA1", achieve, wait);
-    +firstToGoal;
+    <- -+destination(X+1,Y);
     -setGoalDestination;
     skip.
 
 
-//submitting task.
++step(_): task(_,_,_,[_,req(0,1,_)]) & not attached(0,1)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
+
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==1 & not attached(0,1)
+    <- if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
+
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & goalDestination(A,B) & not attached(0,1)
+    <- -+destination(A+1,B+2);
+    if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
+
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==-1 & goalDestination(A,B) & not attached(-1,0)
+    <- -+destination(A-1,B);
+    if(ccw(X) & X<2) {!rotateCCW;} 
+    else {!rotateCW}.
+
+
+/* //submitting task.
 +step(_): arrived & firstToGoal & task(Task,_,_,_) & position(X,Y)
     <- .send("agentA1", tell, waiting);
     .send("agentA1", tell, pos(X,Y));
@@ -219,7 +236,7 @@ moving(n) :- destination(X,Y) & position(A,B) & Y<B.
 +step(_): pos(X,Y) & waiting & task(_,_,_,[_,req(0,2,_)])
     <- -+destination(X+1,Y+2);
     -waiting;
-    skip.
+    skip. */
 
 
 //fixing destination coordinates if they are invalid.
@@ -236,54 +253,92 @@ moving(n) :- destination(X,Y) & position(A,B) & Y<B.
     <- -+destination(X, Y-25).
 
 
-//making room for rotation.
-+!rotate: attached(0,1) & thing(-1,0,obstacle,_)
+//clockwise rotation.
++!rotateCW: attached(0,1) & thing(-1,0,obstacle,_)
     <- clear(-1,0).
-
-+!rotate: attached(0,1) & not thing(-1,0,obstacle,_)
++!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- !rotateCCW.
++!rotateCW: attached(0,1) & not thing(-1,0,obstacle,_)
     <- rotate(cw).
 
-+!rotate: attached(0,-1) & thing(1,0,obstacle,_)
++!rotateCW: attached(0,-1) & thing(1,0,obstacle,_)
     <- clear(1,0).
-
-+!rotate: attached(0,-1) & not thing(1,0,obstacle,_)
++!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
+    <- !rotateCCW.
++!rotateCW: attached(0,-1) & not thing(1,0,obstacle,_)
     <- rotate(cw).
 
-+!rotate: attached(1,0) & thing(0,1,obstacle,_)
++!rotateCW: attached(1,0) & thing(0,1,obstacle,_)
     <- clear(0,1).
-
-+!rotate: attached(1,0) & not thing(0,1,obstacle,_)
++!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
+    <- !rotateCCW.
++!rotateCW: attached(1,0) & not thing(0,1,obstacle,_)
     <- rotate(cw).
 
-+!rotate: attached(-1,0) & thing(0,-1,obstacle,_)
++!rotateCW: attached(-1,0) & thing(0,-1,obstacle,_)
     <- clear(0,-1).
-
-+!rotate: attached(-1,0) & not thing(0,-1,obstacle,_)
++!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- !rotateCCW.
++!rotateCW: attached(-1,0) & not thing(0,-1,obstacle,_)
     <- rotate(cw).
+
+
+//anti-clockwise rotation.
++!rotateCCW: attached(0,1) & thing(1,0,obstacle,_)
+    <- clear(1,0).
++!rotateCCW: attached(0,1) & not thing(1,0,obstacle,_)
+    <- if(ccw(X) & X<2) {-+ccw(X+1);}
+    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
+    rotate(ccw).
+
++!rotateCCW: attached(0,-1) & thing(-1,0,obstacle,_)
+    <- clear(-1,0).
++!rotateCCW: attached(0,-1) & not thing(-1,0,obstacle,_)
+    <- if(ccw(X) & X<2) {-+ccw(X+1);}
+    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
+    rotate(ccw).
+
++!rotateCCW: attached(1,0) & thing(0,-1,obstacle,_)
+    <- clear(0,-1).
++!rotateCCW: attached(1,0) & not thing(0,-1,obstacle,_)
+    <- if(ccw(X) & X<2) {-+ccw(X+1);}
+    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
+    rotate(ccw).
+
++!rotateCCW: attached(-1,0) & thing(0,1,obstacle,_)
+    <- clear(0,1).
++!rotateCCW: attached(-1,0) & not thing(0,1,obstacle,_)
+    <- if(ccw(X) & X<2) {-+ccw(X+1);}
+    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
+    rotate(ccw).
 
 
 //clearing obstacles/moving.
 +!moveE: thing(1,0,obstacle,_)
     <- clear(1,0).
-
-+!moveE: not thing(1,0,obstacle,_)
++!moveE: (thing(1,0,entity,_) | thing(1,0,block,_))
+    <- move(s).
++!moveE: not (thing(1,0,obstacle,_) | thing(1,0,entity,_) | thing(1,0,block,_))
     <- move(e).
 
 +!moveS: thing(0,1,obstacle,_)
     <- clear(0,1).
-
-+!moveS: not thing(0,1,obstacle,_)
++!moveS: (thing(0,1,entity,_) | thing(0,1,block,_))
+    <- move(w).
++!moveS: not (thing(0,1,obstacle,_) | thing(0,1,entity,_) | thing(0,1,block,_))
     <- move(s).
 
 +!moveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
-
-+!moveN: not thing(0,-1,obstacle,_)
++!moveN: (thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- move(e).
++!moveN: not (thing(0,-1,obstacle,_) | thing(0,-1,entity,_) | thing(0,-1,block,_))
     <- move(n).
 
 +!moveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
-
-+!moveW: not thing(-1,0,obstacle,_)
++!moveW: (thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- move(n).
++!moveW: not (thing(-1,0,obstacle,_) | thing(-1,0,entity,_) | thing(-1,0,block,_))
     <- move(w).
 
