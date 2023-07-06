@@ -54,16 +54,16 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 
 
 +destination(X,Y): X<0
-    <- -+destination(X+25, Y).
+    <- -+destination(X+40, Y).
     
-+destination(X,Y): X>24
-    <- -+destination(X-25, Y).
++destination(X,Y): X>39
+    <- -+destination(X-40, Y).
 
 +destination(X,Y): Y<0
-    <- -+destination(X, Y+25).
+    <- -+destination(X, Y+40).
 
-+destination(X,Y): Y>24
-    <- -+destination(X, Y-25).
++destination(X,Y): Y>39
+    <- -+destination(X, Y-40).
 
 
 

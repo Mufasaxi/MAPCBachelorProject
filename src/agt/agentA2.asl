@@ -2,8 +2,8 @@ start.
 locationsFound.
 tellDispenser.
 
-destination(19,19).
-firstPoint(19,5).
+destination(35,35).
+firstPoint(35,5).
 secondPoint(6,5).
 
 arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
@@ -17,27 +17,32 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 //saving coord to roleZone, goalZone, and dispenser.
 +step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
     <- +roleDestination(A+X, B+Y);
-    .send("agentA1", tell, roleDestination(A+X, B+Y));
-    .send("agentA3", tell, roleDestination(A+X, B+Y));
+    .broadcast(tell, roleDestination(A+X, B+Y));
     skip.
 
-+step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
++step(_): thing(X,Y,dispenser,Type) & task(Task,_,_,[_,req(_,_,RequestedType)]) & working(Task) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
     <- +dispenser(A+X,B+Y,Type);
     skip.
 
-+step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & position(A,B) & Type==RequestedType & tellDispenser
++step(_): thing(X,Y,dispenser,Type) & task(Task,_,_,[req(_,_,RequestedType),_]) & working(Task) & position(A,B) & Type==RequestedType & tellDispenser
     <- .send("agentA1", tell, dispenser(A+X,B+Y,Type));
     -tellDispenser;
     skip.
 
 +step(_): goalZone(X,Y) & position(A,B) & not goalDestination(_,_)
     <- +goalDestination(A+X, B+Y);
-    .send("agentA1", tell, goalDestination(A+X, B+Y));
+    .broadcast(tell, goalDestination(A+X, B+Y));
+    skip.
+
+
++step(_): showDispenser(Type) & dispenser(X,Y,Type)
+    <- .send("agentA4", tell, dispenser(X,Y,Type));
+    -showDispenser(Type);
     skip.
 
 
 //if all locations found, end explore.
-+step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & Type==RequestedType & locationsFound
++step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,Type) & task(Task,_,_,[_,req(_,_,RequestedType)]) & working(Task) & Type==RequestedType & locationsFound
     <- +endExplore;
     -locationsFound;
     +goingRoleZone;
@@ -187,11 +192,11 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     skip.
 
 
-+step(_): task(_,_,_,[_,req(0,1,_)]) & not attached(0,1)
++step(_): task(Task,_,_,[_,req(0,1,_)]) & working(Task) & not attached(0,1)
     <- !rotateCW.
-+step(_): task(_,_,_,[_,req(0,1,_)]) & attached(0,1) & goalDestination(A,B) & not a1Ready
++step(_): task(Task,_,_,[_,req(0,1,_)]) & working(Task) & attached(0,1) & goalDestination(A,B) & not a1Ready
     <- skip.
-+step(_): task(_,_,_,[_,req(0,1,_)]) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
++step(_): task(Task,_,_,[_,req(0,1,_)]) & working(Task) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
     <- +readyToConnect;
     +connecting;
     +submitting;
@@ -200,11 +205,11 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     if(thing(-1,1,obstacle,_)) {.send("agentA3", tell, site(A+1,B+1));}
     skip.
 
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & (X==1 | X==-1) & not attached(0,1)
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & (X==1 | X==-1) & not attached(0,1)
     <- !rotateCW.
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & (X==1 | X==-1) & attached(0,1) & goalDestination(A,B) & not a1Ready
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & (X==1 | X==-1) & attached(0,1) & goalDestination(A,B) & not a1Ready
     <- skip.
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & (X==1 | X==-1) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & (X==1 | X==-1) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
     <- +readyToConnect;
     +connecting;
     +stonks;
@@ -212,12 +217,12 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     if(thing(-1,1,obstacle,_)) {.send("agentA3", tell, site(A+1,B+1));}
     skip.
 
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & goalDestination(A,B) & not attached(-1,0)
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & X==0 & goalDestination(A,B) & not attached(-1,0)
     <- -+destination(A+2,B+2);
     !rotateCW.
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & attached(-1,0) & goalDestination(A,B) & not a1Ready
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & X==0 & attached(-1,0) & goalDestination(A,B) & not a1Ready
     <- skip.
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & attached(-1,0) & goalDestination(A,B) & a1Ready & not stonks
++step(_): task(Task,_,_,[req(0,1,_),req(X,_,_)]) & working(Task) & X==0 & attached(-1,0) & goalDestination(A,B) & a1Ready & not stonks
     <- +readyToConnect;
     +connecting;
     +stonks;
@@ -243,10 +248,10 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     +detaching;
     connect("agentA1", -1, 0).
 
-+step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(0,1)
++step(_): lastAction(connect) & (lastActionResult(failed_partner) | lastActionResult(failed_random)) & attached(0,1)
     <- +detaching;
     connect("agentA1", 0, 1).
-+step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(-1,0)
++step(_): lastAction(connect) & (lastActionResult(failed_partner) | lastActionResult(failed_random)) & attached(-1,0)
     <- +detaching;
     connect("agentA1", -1,0).
 
@@ -263,7 +268,7 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     <- -+destination(X,Y);
     +inGoalZone;
     skip.
-+step(_): submitting & goalZone(0,0) & task(Task,_,_,_)
++step(_): submitting & goalZone(0,0) & task(Task,_,_,_) & working(Task)
     <- -submitting;
     submit(Task).
 
@@ -315,16 +320,16 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 
 //fixing destination coordinates if they are invalid.
 +destination(X,Y): X<0
-    <- -+destination(X+25, Y).
+    <- -+destination(X+40, Y).
     
-+destination(X,Y): X>24
-    <- -+destination(X-25, Y).
++destination(X,Y): X>39
+    <- -+destination(X-40, Y).
 
 +destination(X,Y): Y<0
-    <- -+destination(X, Y+25).
+    <- -+destination(X, Y+40).
 
-+destination(X,Y): Y>24
-    <- -+destination(X, Y-25).
++destination(X,Y): Y>39
+    <- -+destination(X, Y-40).
 
 
 //clockwise rotation.
