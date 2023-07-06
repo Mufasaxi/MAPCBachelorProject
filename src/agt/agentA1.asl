@@ -19,6 +19,7 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 +step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
     <- +roleDestination(A+X, B+Y);
     .send("agentA2", tell, roleDestination(A+X, B+Y));
+    .send("agentA3", tell, roleDestination(A+X, B+Y));
     skip.
 
 +step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
@@ -47,26 +48,22 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 
 //movement.
 +step(_): myBlock(_,_) & not attached(1,0) & moving(w)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+    <- !rotateCW.
 +step(_): moving(w)
     <- !moveW.
 
 +step(_): myBlock(_,_) & not attached(-1,0) & moving(e)
-    <- if(ccw(X) & X<2) {!rotateCCW;}
-    else {!rotateCW}.
+    <- !rotateCW.
 +step(_): moving(e)
     <- !moveE.
 
 +step(_): myBlock(_,_) & not attached(0,1) & moving(n)
-    <- if(ccw(X) & X<2) {!rotateCCW;}
-    else {!rotateCW}.
+    <- !rotateCW.
 +step(_): moving(n)
     <- !moveN.
 
 +step(_): myBlock(_,_) & not attached(0,-1) & moving(s)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+    <- !rotateCW.
 +step(_): moving(s)
     <- !moveS.
 
@@ -170,7 +167,6 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 +step(_): arrived & connecting
     <- connect("agentA2", 0, 1). */
 
-
 //setting destination to goalZone.
 +step(_): goalDestination(X,Y) & setGoalDestination
     <- -+destination(X,Y);
@@ -178,22 +174,77 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
     skip.
 
 +step(_): task(_,_,_,[req(0,1,_),_]) & not attached(0,1)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+    <- +submitting;
+    !rotateCW.
++step(_): task(_,_,_,[req(0,1,_),_]) & attached(0,1) & not stonks
+    <- .send("agentA2", tell, a1Ready);
+    +connecting;
+    +stonks;
+    skip.
 
-+step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==1 & goalDestination(A,B) & not attached(0,1)
-    <- -+destination(A-1,B);
-    if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & (X==-1 | X==1) & not attached(0,1)
+    <- !rotateCW.
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & (X==-1 | X==1) & attached(0,1) & not stonks
+    <- .send("agentA2", tell, a1Ready);
+    +connecting;
+    +stonks;
+    skip.
 
 +step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==0 & goalDestination(A,B) & not attached(1,0)
-    <- -+destination(A-1,B+2);
-    if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+    <- -+destination(A,B+2);
+    !rotateCW.
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==0 & attached(1,0) & not stonks
+    <- .send("agentA2", tell, a1Ready);
+    +connecting;
+    +stonks;
+    skip.
 
-+step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==-1 & not attached(0,1)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+
+
+/* +step(_): connecting & not connectReady1
+    <- .send("agentA2", tell, connectReady1);
+    +connectReady1;
+    skip. */
+
+/* +step(_): connectReady1 & connectReady2
+    <- .wait(2000);
+    .print("a1 ready to connnect"). */
++step(_): connecting & /*connectReady2 &*/ attached(0,1)
+    <- -connecting;
+    connect("agentA2", 0, 1).
++step(_): connecting & /*connectReady2 &*/ attached(1,0)
+    <- -connecting;
+    connect("agentA2", 1, 0).
+
++step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(0,1)
+    <- connect("agentA2", 0, 1).
++step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(1,0)
+    <- connect("agentA2", 1,0).
+
+//detaching agent
++step(_): not submitting & attached(0,1) & not detached
+    <- +detached;
+    detach(s).
++step(_): not submitting & attached(1,0) & not detached
+    <- +detached;
+    detach(e).
+
+
+//submitting
++step(_): submitting & task(Task,_,_,_) & not connecting
+    <- +submitted; 
+    submit(Task).
+
+
+/* 
++step(_): submitting & task(Task,_,_,_)
+    <- -submitting;
+    +submitted;
+    submit(Task).
++step(_): not submitting & not submitted & attached(0,1)
+    <- detach(s).
++step(_): not submitting & not submitted & attached(1,0)
+    <- detach(e). */
 
 
 /* //submitting task.
@@ -243,34 +294,38 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 //clockwise rotation.
 +!rotateCW: attached(0,1) & thing(-1,0,obstacle,_)
     <- clear(-1,0).
-+!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(0,1) & not thing(-1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(0,-1) & thing(1,0,obstacle,_)
     <- clear(1,0).
-+!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(0,-1) & not thing(1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(1,0) & thing(0,1,obstacle,_)
     <- clear(0,1).
-+!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(1,0) & not thing(0,1,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(-1,0) & thing(0,-1,obstacle,_)
     <- clear(0,-1).
-+!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(-1,0) & not thing(0,-1,obstacle,_)
     <- rotate(cw).
 
 
-//anti-clockwise rotation
++!rotateCW: not attached(_,_)
+    <- skip.
+
+
+/* //anti-clockwise rotation
 +!rotateCCW: attached(0,1) & thing(1,0,obstacle,_)
     <- clear(1,0).
 +!rotateCCW: attached(0,1) & not thing(1,0,obstacle,_)
@@ -298,34 +353,42 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
     <- if(ccw(X) & X<2) {-+ccw(X+1);}
     elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
     rotate(ccw).
-
+ */
 
 //clearing/avoiding obstacles.
 +!moveE: thing(1,0,obstacle,_)
     <- clear(1,0).
-+!moveE: (thing(1,0,entity,_) | thing(1,0,block,_))
-    <- move(s).
-+!moveE: not (thing(1,0,obstacle,_) | (thing(1,0,entity,_) | thing(1,0,block,_)))
++!moveE: (thing(1,0,entity,_) | (thing(1,0,block,_) & not myBlock(1,0)))
+    <- !moveS.
++!moveE: not (thing(1,0,obstacle,_) | thing(1,0,entity,_) | thing(1,0,block,_))
+    <- move(e).
++!moveE: (thing(1,0,block,_) & myBlock(1,0))
     <- move(e).
 
 +!moveS: thing(0,1,obstacle,_)
     <- clear(0,1).
-+!moveS: (thing(0,1,entity,_) | thing(0,1,block,_))
-    <- move(w).
-+!moveS: not (thing(0,1,obstacle,_) | (thing(0,1,entity,_) | thing(0,1,block,_)))
++!moveS: (thing(0,1,entity,_) | (thing(0,1,block,_) & not myBlock(0,1)))
+    <- !moveW.
++!moveS: not (thing(0,1,obstacle,_) | thing(0,1,entity,_) | thing(0,1,block,_))
+    <- move(s).
++!moveS: (thing(0,1,block,_) & myBlock(0,1))
     <- move(s).
 
 +!moveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
-+!moveN: (thing(0,-1,entity,_) | thing(0,-1,block,_))
-    <- move(e).
-+!moveN: not (thing(0,-1,obstacle,_) | (thing(0,-1,entity,_) | thing(0,-1,block,_)))
++!moveN: (thing(0,-1,entity,_) | (thing(0,-1,block,_) & not myBlock(0,-1)))
+    <- !moveE.
++!moveN: not (thing(0,-1,obstacle,_) | thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- move(n).
++!moveN: (thing(0,-1,block,_) & myBlock(0,-1))
     <- move(n).
 
 +!moveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
-+!moveW: (thing(-1,0,entity,_) | thing(-1,0,block,_))
-    <- move(n).
-+!moveW: not (thing(-1,0,obstacle,_) | (thing(-1,0,entity,_) | thing(-1,0,block,_)))
++!moveW: (thing(-1,0,entity,_) | (thing(-1,0,block,_) & not myBlock(-1,0)))
+    <- !moveN.
++!moveW: not (thing(-1,0,obstacle,_) | thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- move(w).
++!moveW: (thing(-1,0,block,_) & myBlock(-1,0))
     <- move(w).
 

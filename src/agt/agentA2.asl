@@ -18,6 +18,7 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 +step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
     <- +roleDestination(A+X, B+Y);
     .send("agentA1", tell, roleDestination(A+X, B+Y));
+    .send("agentA3", tell, roleDestination(A+X, B+Y));
     skip.
 
 +step(_): thing(X,Y,dispenser,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
@@ -45,27 +46,23 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 
 
 //movement.
-+step(_): myBlock(_,_) & not attached(1,0) & moving(w)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): myBlock(_,_) & not attached(1,0) & moving(w) & not readyToConnect
+    <- !rotateCW.
 +step(_): moving(w)
     <- !moveW.
 
-+step(_): myBlock(_,_) & not attached(-1,0) & moving(e)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): myBlock(_,_) & not attached(-1,0) & moving(e) & not readyToConnect
+    <- !rotateCW.
 +step(_): moving(e)
     <- !moveE.
 
-+step(_): myBlock(_,_) & not attached(0,1) & moving(n)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): myBlock(_,_) & not attached(0,1) & moving(n) & not readyToConnect
+    <- !rotateCW.
 +step(_): moving(n)
     <- !moveN.
 
-+step(_): myBlock(_,_) & not attached(0,-1) & moving(s)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): myBlock(_,_) & not attached(0,-1) & moving(s) & not readyToConnect
+    <- !rotateCW.
 +step(_): moving(s)
     <- !moveS.
 
@@ -185,28 +182,78 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 
 //setting destination to goalZone.
 +step(_): goalDestination(X,Y) & setGoalDestination
-    <- -+destination(X+1,Y);
+    <- -+destination(X+2,Y);
     -setGoalDestination;
     skip.
 
 
 +step(_): task(_,_,_,[_,req(0,1,_)]) & not attached(0,1)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+    <- !rotateCW.
++step(_): task(_,_,_,[_,req(0,1,_)]) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
+    <- +readyToConnect;
+    +connecting;
+    +submitting;
+    +stonks;
+    -+destination(A+1,B);
+    if(thing(-1,1,obstacle,_)) {.send("agentA3", tell, site(A+1,B+1));}
+    skip.
 
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==1 & not attached(0,1)
-    <- if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & (X==1 | X==-1) & not attached(0,1)
+    <- !rotateCW.
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & (X==1 | X==-1) & attached(0,1) & goalDestination(A,B) & a1Ready & not stonks
+    <- +readyToConnect;
+    +connecting;
+    +stonks;
+    -+destination(A+1,B);
+    if(thing(-1,1,obstacle,_)) {.send("agentA3", tell, site(A+1,B+1));}
+    skip.
 
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & goalDestination(A,B) & not attached(0,1)
-    <- -+destination(A+1,B+2);
-    if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & goalDestination(A,B) & not attached(-1,0)
+    <- -+destination(A+2,B+2);
+    !rotateCW.
++step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==0 & attached(-1,0) & goalDestination(A,B) & a1Ready & not stonks
+    <- +readyToConnect;
+    +connecting;
+    +stonks;
+    -+destination(A+1,B+2);
+    if(thing(-2,0,obstacle,_)) {.send("agentA3", tell, site(A,B+2));}
+    skip.
 
-+step(_): task(_,_,_,[req(0,1,_),req(X,_,_)]) & X==-1 & goalDestination(A,B) & not attached(-1,0)
-    <- -+destination(A-1,B);
-    if(ccw(X) & X<2) {!rotateCCW;} 
-    else {!rotateCW}.
+
+/* +step(_): connecting & not connectReady2
+    <- .send("agentA1", tell, connectReady2);
+    +connectReady2;
+    skip. */
+
+/* +step(_): connectReady1 & connectReady2
+    <- .wait(2000);
+    .print("a2 ready to connnect"). */
++step(_): connecting & /*connectReady1 &*/ attached(0,1)
+    <- -connecting;
+    connect("agentA1", 0, 1).
++step(_): connecting & /*connectReady1 &*/ attached(-1,0)
+    <- -connecting;
+    connect("agentA1", -1, 0).
+
++step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(0,1)
+    <- +connecting;
+    connect("agentA1", 0, 1).
++step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(-1,0)
+    <- +connecting;
+    connect("agentA1", -1,0).
+
+//detaching agent
++step(_): not submitting & attached(0,1) & not detached
+    <- +detached;
+    detach(s).
++step(_): not submitting & attached(-1,0) & not detached
+    <- +detached;
+    detach(w).
+
+//submitting
++step(_): submitting & task(Task,_,_,_)
+    <- +submitted; 
+    submit(Task).
 
 
 /* //submitting task.
@@ -256,34 +303,37 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 //clockwise rotation.
 +!rotateCW: attached(0,1) & thing(-1,0,obstacle,_)
     <- clear(-1,0).
-+!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(0,1) & not thing(-1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(0,-1) & thing(1,0,obstacle,_)
     <- clear(1,0).
-+!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(0,-1) & not thing(1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(1,0) & thing(0,1,obstacle,_)
     <- clear(0,1).
-+!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(1,0) & not thing(0,1,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(-1,0) & thing(0,-1,obstacle,_)
     <- clear(0,-1).
-+!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
-    <- !rotateCCW.
+/* +!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- !rotateCCW. */
 +!rotateCW: attached(-1,0) & not thing(0,-1,obstacle,_)
     <- rotate(cw).
 
 
-//anti-clockwise rotation.
++!rotateCW: not attached(_,_)
+    <- skip.
+
+/* //anti-clockwise rotation.
 +!rotateCCW: attached(0,1) & thing(1,0,obstacle,_)
     <- clear(1,0).
 +!rotateCCW: attached(0,1) & not thing(1,0,obstacle,_)
@@ -310,35 +360,43 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 +!rotateCCW: attached(-1,0) & not thing(0,1,obstacle,_)
     <- if(ccw(X) & X<2) {-+ccw(X+1);}
     elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
-    rotate(ccw).
+    rotate(ccw). */
 
 
 //clearing obstacles/moving.
 +!moveE: thing(1,0,obstacle,_)
     <- clear(1,0).
-+!moveE: (thing(1,0,entity,_) | thing(1,0,block,_))
-    <- move(s).
++!moveE: (thing(1,0,entity,_) | (thing(1,0,block,_) & not myBlock(1,0)))
+    <- !moveS.
 +!moveE: not (thing(1,0,obstacle,_) | thing(1,0,entity,_) | thing(1,0,block,_))
+    <- move(e).
++!moveE: (thing(1,0,block,_) & myBlock(1,0))
     <- move(e).
 
 +!moveS: thing(0,1,obstacle,_)
     <- clear(0,1).
-+!moveS: (thing(0,1,entity,_) | thing(0,1,block,_))
-    <- move(w).
++!moveS: (thing(0,1,entity,_) | (thing(0,1,block,_) & not myBlock(0,1)))
+    <- !moveW.
 +!moveS: not (thing(0,1,obstacle,_) | thing(0,1,entity,_) | thing(0,1,block,_))
+    <- move(s).
++!moveS: (thing(0,1,block,_) & myBlock(0,1))
     <- move(s).
 
 +!moveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
-+!moveN: (thing(0,-1,entity,_) | thing(0,-1,block,_))
-    <- move(e).
++!moveN: (thing(0,-1,entity,_) | (thing(0,-1,block,_) & not myBlock(0,-1)))
+    <- !moveE.
 +!moveN: not (thing(0,-1,obstacle,_) | thing(0,-1,entity,_) | thing(0,-1,block,_))
+    <- move(n).
++!moveN: (thing(0,-1,block,_) & myBlock(0,-1))
     <- move(n).
 
 +!moveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
-+!moveW: (thing(-1,0,entity,_) | thing(-1,0,block,_))
-    <- move(n).
++!moveW: (thing(-1,0,entity,_) | (thing(-1,0,block,_) & not myBlock(-1,0)))
+    <- !moveN.
 +!moveW: not (thing(-1,0,obstacle,_) | thing(-1,0,entity,_) | thing(-1,0,block,_))
+    <- move(w).
++!moveW: (thing(-1,0,block,_) & myBlock(-1,0))
     <- move(w).
 
