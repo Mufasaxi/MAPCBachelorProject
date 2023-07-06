@@ -11,7 +11,7 @@ moving(w) :- destination(X,Y) & position(A,B) & X<A.
 moving(e) :- destination(X,Y) & position(A,B) & X>A.
 moving(s) :- destination(X,Y) & position(A,B) & Y>B.
 moving(n) :- destination(X,Y) & position(A,B) & Y<B.
-myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
+myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 
 
 
@@ -47,7 +47,7 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
 
 
 //movement.
-+step(_): myBlock(_,_) & not attached(1,0) & moving(w)
++step(_): myBlock(_,_) & not attached(1,0) & moving(w) & not readyToConnect
     <- !rotateCW.
 +step(_): moving(w)
     <- !moveW.
@@ -174,10 +174,10 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
     skip.
 
 +step(_): task(_,_,_,[req(0,1,_),_]) & not attached(0,1)
-    <- +submitting;
-    !rotateCW.
+    <- !rotateCW.
 +step(_): task(_,_,_,[req(0,1,_),_]) & attached(0,1) & not stonks
     <- .send("agentA2", tell, a1Ready);
+    +submitting;
     +connecting;
     +stonks;
     skip.
@@ -211,29 +211,57 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
     .print("a1 ready to connnect"). */
 +step(_): connecting & /*connectReady2 &*/ attached(0,1)
     <- -connecting;
+    +detaching;
     connect("agentA2", 0, 1).
 +step(_): connecting & /*connectReady2 &*/ attached(1,0)
     <- -connecting;
+    +detaching;
     connect("agentA2", 1, 0).
 
 +step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(0,1)
-    <- connect("agentA2", 0, 1).
+    <- +detaching;
+    connect("agentA2", 0, 1).
 +step(_): lastAction(connect) & lastActionResult(failed_partner) & attached(1,0)
-    <- connect("agentA2", 1,0).
+    <- +detaching;
+    connect("agentA2", 1,0).
 
 //detaching agent
-+step(_): not submitting & attached(0,1) & not detached
-    <- +detached;
++step(_): not submitting & detaching & attached(0,1)
+    <- -detaching;
+    +detached;
     detach(s).
-+step(_): not submitting & attached(1,0) & not detached
-    <- +detached;
++step(_): not submitting & detaching & attached(1,0)
+    <- -detaching;
+    +detached;
     detach(e).
-
++step(_): detached & goalDestination(X,Y)
+    <- -+destination(X-1,Y);
+    +readyToConnect;
+    if(thing(0,1,obstacle,_)) {clear(0,1);}
+    else {skip;}.
+    
 
 //submitting
-+step(_): submitting & task(Task,_,_,_) & not connecting
++step(_): submitting & task(Task,_,_,_)
     <- +submitted; 
     submit(Task).
+
+
++step(_): submitted & dispenser(X,Y,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & Type==RequestedType
+    <- -+destination(X,Y);
+    -readyToConnect;
+    +requesting;
+    -submitted;
+    skip.
+
++step(_): submitted & dispenser(X,Y,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & Type==RequestedType
+    <- -+destination(X,Y);
+    -readyToConnect;
+    +requesting;
+    -submitted;
+    skip.
+
+
 
 
 /* 
@@ -319,10 +347,6 @@ myBlock(X,Y) :- attached(X,Y) & X<2 & X>-2 & Y<2 & Y>-2.
     <- !rotateCCW. */
 +!rotateCW: attached(-1,0) & not thing(0,-1,obstacle,_)
     <- rotate(cw).
-
-
-+!rotateCW: not attached(_,_)
-    <- skip.
 
 
 /* //anti-clockwise rotation
