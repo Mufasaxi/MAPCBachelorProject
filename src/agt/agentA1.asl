@@ -1,7 +1,6 @@
 start.
 locationsFound.
 tellDispenser.
-choosingTask.
 
 destination(5,5).
 firstPoint(5,35).
@@ -12,45 +11,34 @@ moving(w) :- destination(X,Y) & position(A,B) & X<A.
 moving(e) :- destination(X,Y) & position(A,B) & X>A.
 moving(s) :- destination(X,Y) & position(A,B) & Y>B.
 moving(n) :- destination(X,Y) & position(A,B) & Y<B.
-myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
+myBlock :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 
 
 
 //saving coord to roleZone, goalZone, and dispenser.
 +step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
     <- +roleDestination(A+X, B+Y);
-    .broadcast(tell, roleDestination(A+X, B+Y));
+    .send("agentA2", tell, roleDestination(A+X, B+Y));
+    .send("agentA3", tell, roleDestination(A+X, B+Y));
     skip.
 
-+step(_): task(Task,_,_,[_,_]) & not working(Task) & choosingTask
-    <- +working(Task);
-    -choosingTask;
-    .send("agentA2", tell, working(Task));
-    skip.
-
-+step(_): thing(X,Y,dispenser,Type) & task(Task,_,_,[req(_,_,RequestedType),_]) & working(Task) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
++step(_): thing(X,Y,dispenser,Type) & task(task0,_,_,[req(_,_,RequestedType),_]) & position(A,B) & Type==RequestedType & not dispenser(_,_,_)
     <- +dispenser(A+X,B+Y,Type);
     skip.
 
-+step(_): thing(X,Y,dispenser,Type) & task(Task,_,_,[_,req(_,_,RequestedType)]) & working(Task) & position(A,B) & Type==RequestedType & tellDispenser
++step(_): thing(X,Y,dispenser,Type) & task(task0,_,_,[_,req(_,_,RequestedType)]) & position(A,B) & Type==RequestedType & tellDispenser
     <- .send("agentA2", tell, dispenser(A+X,B+Y,Type));
     -tellDispenser;
     skip.
 
 +step(_): goalZone(X,Y) & position(A,B) & not goalDestination(_,_)
     <- +goalDestination(A+X, B+Y);
-    .broadcast(tell, goalDestination(A+X, B+Y));
-    skip.
-
-
-+step(_): showDispenser(Type) & dispenser(X,Y,Type)
-    <- .send("agentA4", tell, dispenser(X,Y,Type));
-    -showDispenser(Type);
+    .send("agentA2", tell, goalDestination(A+X, B+Y));
     skip.
 
 
 //if all locations found, end explore.
-+step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,Type) & task(Task,_,_,[req(_,_,RequestedType),_]) & working(Task) & Type==RequestedType & locationsFound
++step(_): roleDestination(X,Y) & goalDestination(_,_) & dispenser(_,_,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & Type==RequestedType & locationsFound
     <- +endExplore;
     -locationsFound;
     +goingRoleZone;
@@ -59,22 +47,22 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 
 
 //movement.
-+step(_): myBlock(_,_) & not attached(1,0) & moving(w) & not readyToConnect
++step(_): myBlock & not attached(1,0) & moving(w) & not readyToConnect
     <- !rotateCW.
 +step(_): moving(w)
     <- !moveW.
 
-+step(_): myBlock(_,_) & not attached(-1,0) & moving(e)
++step(_): myBlock & not attached(-1,0) & moving(e)
     <- !rotateCW.
 +step(_): moving(e)
     <- !moveE.
 
-+step(_): myBlock(_,_) & not attached(0,1) & moving(n)
++step(_): myBlock & not attached(0,1) & moving(n)
     <- !rotateCW.
 +step(_): moving(n)
     <- !moveN.
 
-+step(_): myBlock(_,_) & not attached(0,-1) & moving(s)
++step(_): myBlock & not attached(0,-1) & moving(s)
     <- !rotateCW.
 +step(_): moving(s)
     <- !moveS.
@@ -131,101 +119,56 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     -attaching;
     attach(s).
 
-/* //waiting for other agent to arrive.
-+!wait: not waiting
-    <- -setGoalDestination;
-    !wait;
-    skip. */
-
-
-/* //meeting to connect blocks.
-+step(_): position(X,Y) & meeting & task(_,_,_,[req(A,B,_),_]) & A==0 & B==1
-    <- .send("agentA2", tell, position(X-1,Y));
-    -meeting;
-    +connecting;
-    -+destination(X-1,Y);
-    skip.
-
-+step(_): position(X,Y) & meeting & task(_,_,_,[req(A,B,_),_]) & not (A==0 & B==1) & waiting & not thing(-1,0,entity,_)
-    <- -waiting;
-    -+destination(X-1,Y);
-    skip.
-
-+position(X,Y)[source(agentA2)]: meeting & task(_,_,_,[req(1,1,_),_])
-    <- +connecting;
-    -meeting;
-    -+destination(X+1,Y);
-    skip.
-    
-+position(X,Y)[source(agentA2)]: meeting & task(_,_,_,[req(-1,1,_),_])
-    <- +connecting;
-    -meeting;
-    -+destination(X-1,Y);
-    skip.
-    
-+position(X,Y)[source(agentA2)]: meeting & task(_,_,_,[req(0,2,_),_])
-    <- +rotating;
-    -meeting;
-    -+destination(X+1,Y+2);
-    skip.
-    
-
-//connecting blocks.
-+step(_): arrived & rotating
-    <- +connecting;
-    -rotating;
-    rotate(cw).
-
-+step(_): arrived & connecting
-    <- connect("agentA2", 0, 1). */
-
 //setting destination to goalZone.
 +step(_): goalDestination(X,Y) & setGoalDestination
     <- -+destination(X,Y);
     -setGoalDestination;
+    +configuring;
     skip.
 
-+step(_): task(Task,_,_,[req(0,1,_),_]) & working(Task) & not attached(0,1)
+
+//getting into right position/orientation.
++step(_): task(_,_,_,[req(0,1,_),_]) & not attached(0,1) & configuring
     <- !rotateCW.
-+step(_): task(Task,_,_,[req(0,1,_),_]) & working(Task) & attached(0,1) & not stonks
++step(_): task(_,_,_,[req(0,1,_),_]) & attached(0,1) & configuring
+    <- -configuring;
+    +waitingConnect.
++step(_): task(_,_,_,[req(0,1,_),_]) & attached(0,1) & waitingConnect
     <- .send("agentA2", tell, a1Ready);
     +submitting;
     +connecting;
-    +stonks;
+    -waitingConnect;
     skip.
 
-+step(_): task(Task,_,_,[req(X,_,_),req(0,1,_)]) & working(Task) & (X==-1 | X==1) & not attached(0,1)
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & (X==-1 | X==1) & not attached(0,1) & configuring
     <- !rotateCW.
-+step(_): task(Task,_,_,[req(X,_,_),req(0,1,_)]) & working(Task) & (X==-1 | X==1) & attached(0,1) & not stonks
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & (X==-1 | X==1) & attached(0,1) & configuring
+    <- -configuring;
+    +waitingConnect.
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & (X==-1 | X==1) & attached(0,1) & waitingConnect
     <- .send("agentA2", tell, a1Ready);
     +connecting;
-    +stonks;
+    -waitingConnect;
     skip.
 
-+step(_): task(Task,_,_,[req(X,_,_),req(0,1,_)]) & working(Task) & X==0 & goalDestination(A,B) & not attached(1,0)
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==0 & goalDestination(A,B) & not attached(1,0) & configuring
     <- -+destination(A,B+2);
     !rotateCW.
-+step(_): task(Task,_,_,[req(X,_,_),req(0,1,_)]) & working(Task) & X==0 & attached(1,0) & not stonks
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==0 & goalDestination(A,B) & not attached(1,0) & configuring
+    <- -configuring;
+    +waitingConnect.
++step(_): task(_,_,_,[req(X,_,_),req(0,1,_)]) & X==0 & attached(1,0) & waitingConnect
     <- .send("agentA2", tell, a1Ready);
     +connecting;
-    +stonks;
+    -waitingConnect;
     skip.
 
 
-
-/* +step(_): connecting & not connectReady1
-    <- .send("agentA2", tell, connectReady1);
-    +connectReady1;
-    skip. */
-
-/* +step(_): connectReady1 & connectReady2
-    <- .wait(2000);
-    .print("a1 ready to connnect"). */
-+step(_): connecting & /*connectReady2 &*/ attached(0,1)
++step(_): connecting & attached(0,1)
     <- -connecting;
     +detaching;
     connect("agentA2", 0, 1).
-+step(_): connecting & /*connectReady2 &*/ attached(1,0)
++step(_): connecting & attached(1,0)
     <- -connecting;
     +detaching;
     connect("agentA2", 1, 0).
@@ -254,67 +197,28 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
     
 
 //submitting
-+step(_): submitting & task(Task,_,_,_) & working(Task)
-    <- +submitted; 
-    submit(Task).
-
-
-+step(_): submitted & dispenser(X,Y,Type) & task(_,_,_,[req(_,_,RequestedType),_]) & Type==RequestedType
-    <- -+destination(X,Y);
-    -readyToConnect;
-    +requesting;
-    -submitted;
-    skip.
-
-+step(_): submitted & dispenser(X,Y,Type) & task(_,_,_,[_,req(_,_,RequestedType)]) & Type==RequestedType
-    <- -+destination(X,Y);
-    -readyToConnect;
-    +requesting;
-    -submitted;
-    skip.
-
-
-
-
-/* 
 +step(_): submitting & task(Task,_,_,_)
     <- -submitting;
-    +submitted;
+    +submitted; 
     submit(Task).
-+step(_): not submitting & not submitted & attached(0,1)
-    <- detach(s).
-+step(_): not submitting & not submitted & attached(1,0)
-    <- detach(e). */
++step(_): lastAction(submit) & lastActionResult(failed_random) & task(Task,_,_,_)
+    <- submit(Task).
 
 
-/* //submitting task.
-+step(_): arrived & firstToGoal & position(X,Y)
-    <- .send("agentA2", tell, waiting);
-    .send("agentA2", tell, pos(X,Y));
-    -firstToGoal;
+//moving on to next Task.
++step(_): submitted & dispenser(X,Y,Type)
+    <- -+destination(X,Y-1);
+    -readyToConnect;
+    +requesting;
+    -submitted;
     skip.
 
-
-//changing destination to goalZone to arrange blocks.
-+step(_): pos(X,Y) & waiting & task(_,_,_,[req(0,1,_),_])
-    <- -+destination(X,Y-3);
-    -waiting;
++step(_): detached & dispenser(X,Y,Type)
+    <- -+destination(X,Y-1);
+    -readyToConnect;
+    +requesting;
+    -nextTask;
     skip.
-
-+step(_): pos(X,Y) & waiting & task(_,_,_,[req(1,1,_),_])
-    <- -+destination(X+1,Y);
-    -waiting;
-    skip.
-
-+step(_): pos(X,Y) & waiting & task(_,_,_,[req(-1,1,_),_])
-    <- -+destination(X-1,Y);
-    -waiting;
-    skip.
-
-+step(_): pos(X,Y) & waiting & task(_,_,_,[req(0,2,_),_])
-    <- -+destination(X+1,Y+2);
-    -waiting;
-    skip. */
 
 
 //fixing destination coordinates if they are invalid.
@@ -394,37 +298,37 @@ myBlock(X,Y) :- attached(0,1) | attached(1,0) | attached(0,-1) | attached(-1,0).
 //clearing/avoiding obstacles.
 +!moveE: thing(1,0,obstacle,_)
     <- clear(1,0).
-+!moveE: (thing(1,0,entity,_) | (thing(1,0,block,_) & not myBlock(1,0)))
++!moveE: (thing(1,0,entity,_) | (thing(1,0,block,_) & not myBlock))
     <- !moveS.
 +!moveE: not (thing(1,0,obstacle,_) | thing(1,0,entity,_) | thing(1,0,block,_))
     <- move(e).
-+!moveE: (thing(1,0,block,_) & myBlock(1,0))
++!moveE: (thing(1,0,block,_) & myBlock)
     <- move(e).
 
 +!moveS: thing(0,1,obstacle,_)
     <- clear(0,1).
-+!moveS: (thing(0,1,entity,_) | (thing(0,1,block,_) & not myBlock(0,1)))
++!moveS: (thing(0,1,entity,_) | (thing(0,1,block,_) & not myBlock))
     <- !moveW.
 +!moveS: not (thing(0,1,obstacle,_) | thing(0,1,entity,_) | thing(0,1,block,_))
     <- move(s).
-+!moveS: (thing(0,1,block,_) & myBlock(0,1))
++!moveS: (thing(0,1,block,_) & myBlock)
     <- move(s).
 
 +!moveN: thing(0,-1,obstacle,_)
     <- clear(0,-1).
-+!moveN: (thing(0,-1,entity,_) | (thing(0,-1,block,_) & not myBlock(0,-1)))
++!moveN: (thing(0,-1,entity,_) | (thing(0,-1,block,_) & not myBlock))
     <- !moveE.
 +!moveN: not (thing(0,-1,obstacle,_) | thing(0,-1,entity,_) | thing(0,-1,block,_))
     <- move(n).
-+!moveN: (thing(0,-1,block,_) & myBlock(0,-1))
++!moveN: (thing(0,-1,block,_) & myBlock)
     <- move(n).
 
 +!moveW: thing(-1,0,obstacle,_)
     <- clear(-1,0).
-+!moveW: (thing(-1,0,entity,_) | (thing(-1,0,block,_) & not myBlock(-1,0)))
++!moveW: (thing(-1,0,entity,_) | (thing(-1,0,block,_) & not myBlock))
     <- !moveN.
 +!moveW: not (thing(-1,0,obstacle,_) | thing(-1,0,entity,_) | thing(-1,0,block,_))
     <- move(w).
-+!moveW: (thing(-1,0,block,_) & myBlock(-1,0))
++!moveW: (thing(-1,0,block,_) & myBlock)
     <- move(w).
 
