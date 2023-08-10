@@ -3,9 +3,11 @@ moving(w) :- destination(X,Y) & position(A,B) & X<A.
 moving(e) :- destination(X,Y) & position(A,B) & X>A.
 moving(s) :- destination(X,Y) & position(A,B) & Y>B.
 moving(n) :- destination(X,Y) & position(A,B) & Y<B.
-arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
 
-
++step(_): roleZone(X,Y) & position(A,B) & not roleDestination(_,_)
+    <- +roleDestination(A+X, B+Y);
+    .broadcast(tell, roleDestination(A+X, B+Y));
+    skip.
 
 +step(_): moving(w)
     <- !moveW.
@@ -25,30 +27,55 @@ arrived :- destination(X,Y) & position(A,B) & X==A & Y==B.
     +destination(X,Y);
     skip.
 
-+step(_): arrived & goingRoleZone
++step(_): goingRoleZone
     <- -goingRoleZone;
     +away;
     adopt(digger).
++step(_): lastAction(adopt) & lastActionResult(failed_random)
+    <- adopt(digger).
 
 +step(_): away
     <- -away;
-    +stonks;
     -+destination(0,0);
     skip.
 
 
-+step(_): not site(X,Y)
++step(_): not site(_,_) & not removeA1(_,_) & not removeA2(_,_)
     <- skip.
-+step(_): site(X,Y) & stonks
-    <- -+destination(X, Y+2);
-    -stonks;
++step(_): arrived & not (clearing | clearing2)
+    <- skip.
+
++step(_): site(X,Y) & not there
+    <- -+destination(X, Y-3);
+    +there;
     +clearing;
     skip.
 +step(_): clearing
     <- -clearing;
     +away;
-    clear(0, -2).
+    clear(0, 3).
 
++step(_): (removeA1(X,Y) | removeA2(X,Y)) & not arrived
+    <- -+destination(X, Y-3);
+    +arrived;
+    +clearing;
+    skip.
++step(_): clearing
+    <- -clearing;
+    +clearing2;
+    clear(0, 3).
++step(_): clearing2 & thing(1,3,block,_) & removeA1(_,_)
+    <- -clearing2;
+    +away;
+    clear(1, 3).
++step(_): clearing2 & thing(0,4,block,_) & removeA1(_,_)
+    <- -clearing2;
+    +away;
+    clear(0, 4).
++step(_): clearing2 & removeA2(_,_)
+    <- -clearing2;
+    +away;
+    clear(-1, 3).
 
 
 

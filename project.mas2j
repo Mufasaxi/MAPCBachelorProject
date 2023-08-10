@@ -4,6 +4,8 @@ MAS mars {
 
     agents: agentA1;
             agentA2;
+            agentA3;
+            agentA4;
 
     aslSourcePath: "src/agt";
 }
