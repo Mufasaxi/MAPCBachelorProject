@@ -13,8 +13,8 @@
   
   "multi-entities": [
     {
-      "name-prefix": "agentA",
-      "username-prefix": "agentA",
+      "name-prefix": "agentRobots",
+      "username-prefix": "agentRobots",
       "password": "1",
       "print-iilang": false,
       "print-json": false,

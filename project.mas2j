@@ -2,10 +2,16 @@ MAS mars {
 
     environment: env.EISAdapter
 
-    agents: agentA1;
-            agentA2;
-            agentA3;
-            agentA4;
+    agents: agentRobots1;
+            agentRobots2;
+            agentRobots3;
+            agentRobots4;
+            agentRobots5;
+            agentRobots6;
+            agentRobots7;
+            agentRobots8;
+            agentRobots9;
+            agentRobots10;
 
     aslSourcePath: "src/agt";
 }
