@@ -259,62 +259,29 @@ endTask1 :- task(task1,A,_,_) & step(B) & B>A.
 //clockwise rotation.
 +!rotateCW: attached(0,1) & thing(-1,0,obstacle,_)
     <- clear(-1,0).
-/* +!rotateCW: attached(0,1) & (thing(-1,0,entity,_) | thing(-1,0,block,_))
-    <- !rotateCCW. */
+
 +!rotateCW: attached(0,1) & not thing(-1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(0,-1) & thing(1,0,obstacle,_)
     <- clear(1,0).
-/* +!rotateCW: attached(0,-1) & (thing(1,0,entity,_) | thing(1,0,block,_))
-    <- !rotateCCW. */
+
 +!rotateCW: attached(0,-1) & not thing(1,0,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(1,0) & thing(0,1,obstacle,_)
     <- clear(0,1).
-/* +!rotateCW: attached(1,0) & (thing(0,1,entity,_) | thing(0,1,block,_))
-    <- !rotateCCW. */
+
 +!rotateCW: attached(1,0) & not thing(0,1,obstacle,_)
     <- rotate(cw).
 
 +!rotateCW: attached(-1,0) & thing(0,-1,obstacle,_)
     <- clear(0,-1).
-/* +!rotateCW: attached(-1,0) & (thing(0,-1,entity,_) | thing(0,-1,block,_))
-    <- !rotateCCW. */
+
 +!rotateCW: attached(-1,0) & not thing(0,-1,obstacle,_)
     <- rotate(cw).
 
 
-/* //anti-clockwise rotation
-+!rotateCCW: attached(0,1) & thing(1,0,obstacle,_)
-    <- clear(1,0).
-+!rotateCCW: attached(0,1) & not thing(1,0,obstacle,_)
-    <- if(ccw(X) & X<2) {-+ccw(X+1);}
-    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
-    rotate(ccw).
-
-+!rotateCCW: attached(0,-1) & thing(-1,0,obstacle,_)
-    <- clear(-1,0).
-+!rotateCCW: attached(0,-1) & not thing(-1,0,obstacle,_)
-    <- if(ccw(X) & X<2) {-+ccw(X+1);}
-    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
-    rotate(ccw).
-
-+!rotateCCW: attached(1,0) & thing(0,-1,obstacle,_)
-    <- clear(0,-1).
-+!rotateCCW: attached(1,0) & not thing(0,-1,obstacle,_)
-    <- if(ccw(X) & X<2) {-+ccw(X+1);}
-    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
-    rotate(ccw).
-
-+!rotateCCW: attached(-1,0) & thing(0,1,obstacle,_)
-    <- clear(0,1).
-+!rotateCCW: attached(-1,0) & not thing(0,1,obstacle,_)
-    <- if(ccw(X) & X<2) {-+ccw(X+1);}
-    elif(not ccw(_) | (ccw(X) & X>1)) {-+ccw(0);}
-    rotate(ccw).
- */
 
 //clearing/avoiding obstacles.
 +!moveE: thing(1,0,obstacle,_)
